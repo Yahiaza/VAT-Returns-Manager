@@ -8,6 +8,22 @@ const {rawRun,query,one,persist,lastId,logHistory,parseParts,replaceAccountVisib
 const db={run:rawRun};
 if (process.platform === 'win32') app.setAppUserModelId('sa.vat.returns.manager');
 let win; let tray; let dataFolder; let dbPath; let reminderTimer;
+
+function showMainWindow() {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    showMainWindow();
+  });
+}
 function readConfig(){const p=path.join(app.getPath('userData'),'vat-config.json');try{return JSON.parse(fs.readFileSync(p,'utf8'));}catch{return {};}}
 function writeConfig(obj){const p=path.join(app.getPath('userData'),'vat-config.json');ensureDir(path.dirname(p));fs.writeFileSync(p,JSON.stringify(obj,null,2));}
 async function openDatabase(folder){await store.openDatabase(folder);dataFolder=store.getDataFolder();dbPath=store.getDbPath();writeConfig({dataFolder});}
@@ -43,11 +59,12 @@ function setupTray() {
   tray = new Tray(image);
   tray.setToolTip('VAT Returns Manager');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'فتح البرنامج', click: () => { win.show(); win.focus(); } },
+    { label: 'فتح البرنامج', click: showMainWindow },
     { type: 'separator' },
     { label: 'خروج', click: () => { app.isQuitting = true; app.quit(); } }
   ]));
-  tray.on('double-click', () => { win.show(); win.focus(); });
+  tray.on('click', showMainWindow);
+  tray.on('double-click', showMainWindow);
 }
 
 function checkReminders() {
@@ -63,7 +80,7 @@ function checkReminders() {
   if (rows.length) persist();
 }
 
-app.whenReady().then(async () => {
+if (gotSingleInstanceLock) app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   const config = readConfig();
   const folder = config.dataFolder || path.join(app.getPath('documents'), 'VAT Returns Manager Data');
