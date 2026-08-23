@@ -1,0 +1,4 @@
+import React from 'react';
+import {Minus,Maximize2,X} from 'lucide-react';
+import {api} from '../../services/api.js';
+export default function TitleBar(){return <div className="app-titlebar h-10 shrink-0 bg-[#162536] text-white flex items-center justify-between select-none"><div className="app-drag flex items-center gap-2 px-4 h-full flex-1"><div className="w-6 h-6 rounded bg-[#2c6380] grid place-items-center text-[9px] font-black">VAT</div><span className="text-xs font-semibold text-white/85">VAT Returns Manager</span></div><div className="window-controls flex h-full"><button title="تصغير" onClick={()=>api?.windowMinimize?.()}><Minus size={15}/></button><button title="تكبير / استعادة" onClick={()=>api?.windowToggleMaximize?.()}><Maximize2 size={13}/></button><button className="close" title="إغلاق" onClick={()=>api?.windowClose?.()}><X size={15}/></button></div></div>}

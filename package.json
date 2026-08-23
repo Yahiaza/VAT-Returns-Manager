@@ -1,0 +1,92 @@
+{
+  "name": "vat-returns-manager",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Saudi VAT monthly returns manager - React + Tailwind + Electron with Setup auto-update and Portable build",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "build:web": "vite build",
+    "build": "npm run build:web && electron-builder --win nsis portable --publish never",
+    "start": "electron .",
+    "test:db": "node tests/database.test.cjs",
+    "build:setup": "npm run build:web && electron-builder --win nsis --publish never",
+    "build:portable": "npm run build:web && electron-builder --win portable --publish never",
+    "release": "npm run build:web && electron-builder --win nsis portable --publish always"
+  },
+  "dependencies": {
+    "@fontsource/cairo": "^5.2.6",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.13.0",
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.1",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "sa.vat.returns.manager",
+    "productName": "VAT Returns Manager",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false,
+      "artifactName": "VAT-Returns-Manager-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "VAT-Returns-Manager-${version}-Portable.${ext}",
+      "requestExecutionLevel": "user"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Yahiaza",
+        "repo": "VAT-Returns-Updates",
+        "releaseType": "release"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VAT Returns Manager",
+      "artifactName": "VAT-Returns-Manager-${version}-Setup.${ext}",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

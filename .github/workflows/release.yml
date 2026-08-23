@@ -1,0 +1,30 @@
+name: Build and publish update
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.UPDATE_REPO_TOKEN }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and publish
+        run: npm run release

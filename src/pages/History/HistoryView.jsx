@@ -1,0 +1,2 @@
+import React from 'react';
+export default function HistoryView({data,period}){const list=data.history.filter(h=>!period||h.period_id===period.id);return <div className="card overflow-hidden"><table className="table w-full text-sm"><thead><tr><th>التاريخ</th><th>النوع</th><th>الإجراء</th><th>التفاصيل</th></tr></thead><tbody>{list.map(h=><tr key={h.id}><td className="text-slate-500">{h.created_at}</td><td>{h.entity}</td><td>{h.action}</td><td className="max-w-xl truncate text-slate-500" title={h.details}>{h.details}</td></tr>)}</tbody></table></div>}
