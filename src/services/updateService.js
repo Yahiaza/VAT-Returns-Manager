@@ -5,6 +5,7 @@ export const updateService = {
   check: () => api?.updateCheck?.(),
   download: () => api?.updateDownload?.(),
   install: () => api?.updateInstall?.(),
+  openDownloaded: () => api?.updateOpenDownloaded?.(),
   subscribe: (callback) => api?.onUpdateStatus?.(callback)
 };
 

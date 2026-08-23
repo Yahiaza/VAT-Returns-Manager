@@ -1,2 +1,2 @@
-import React,{useState} from 'react';
-export default function Editable({value,onSave}){const [v,setV]=useState(value);return <input className="bg-transparent outline-none border-b border-transparent focus:border-teal-600 w-full" value={v} onChange={e=>setV(e.target.value)} onBlur={()=>v!==value&&onSave(v)} />}
+import React,{useEffect,useState} from 'react';
+export default function Editable({value,onSave,disabled=false}){const [v,setV]=useState(value);useEffect(()=>setV(value),[value]);return <input disabled={disabled} className={`bg-transparent outline-none border-b border-transparent focus:border-teal-600 w-full ${disabled?'text-slate-500 cursor-not-allowed':''}`} value={v} onChange={e=>!disabled&&setV(e.target.value)} onBlur={()=>!disabled&&v!==value&&onSave(v)} />}

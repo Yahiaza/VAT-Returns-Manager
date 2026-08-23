@@ -39,6 +39,7 @@ contextBridge.exposeInMainWorld('vatAPI', {
   updateCheck: () => ipcRenderer.invoke('vat:updateCheck'),
   updateDownload: () => ipcRenderer.invoke('vat:updateDownload'),
   updateInstall: () => ipcRenderer.invoke('vat:updateInstall'),
+  updateOpenDownloaded: () => ipcRenderer.invoke('vat:updateOpenDownloaded'),
   onUpdateStatus: (callback) => {
     const handler = (_e, data) => callback(data);
     ipcRenderer.on('vat:updateStatus', handler);

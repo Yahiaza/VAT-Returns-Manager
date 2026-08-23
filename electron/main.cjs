@@ -84,6 +84,7 @@ ipcMain.handle('vat:updateGetStatus', () => updater.getStatus());
 ipcMain.handle('vat:updateCheck', () => updater.check(true));
 ipcMain.handle('vat:updateDownload', () => updater.download());
 ipcMain.handle('vat:updateInstall', () => updater.install());
+ipcMain.handle('vat:updateOpenDownloaded', () => updater.openDownloadedLocation());
 
 ipcMain.handle('vat:chooseDataFolder', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory','createDirectory'], title: 'اختر مجلد قاعدة البيانات' });
