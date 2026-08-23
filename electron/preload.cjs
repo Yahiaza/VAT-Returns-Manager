@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('vatAPI', {
   saveBranchCode: (payload) => ipcRenderer.invoke('vat:saveBranchCode', payload),
   createPeriod: (payload) => ipcRenderer.invoke('vat:createPeriod', payload),
   updatePeriod: (payload) => ipcRenderer.invoke('vat:updatePeriod', payload),
+  deletePeriod: (id) => ipcRenderer.invoke('vat:deletePeriod', { id }),
   saveEntry: (payload) => ipcRenderer.invoke('vat:saveEntry', payload),
   saveAdjustment: (payload) => ipcRenderer.invoke('vat:saveAdjustment', payload),
   savePayment: (payload) => ipcRenderer.invoke('vat:savePayment', payload),

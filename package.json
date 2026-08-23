@@ -1,6 +1,6 @@
 {
   "name": "vat-returns-manager",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "private": true,
   "description": "Saudi VAT monthly returns manager - React + Tailwind + Electron with Setup auto-update and Portable build",
   "main": "electron/main.cjs",

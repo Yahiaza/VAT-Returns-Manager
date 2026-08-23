@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {LayoutDashboard,ReceiptText,Building2,ListTree,FileBarChart2,Paperclip,Settings,Plus,Bell,History} from 'lucide-react';
+import {LayoutDashboard,ReceiptText,Building2,ListTree,FileBarChart2,Paperclip,Settings,Plus,Bell,History,TableProperties} from 'lucide-react';
 import {api} from '../services/api.js';
 import TitleBar from '../components/layout/TitleBar.jsx';
 import Dashboard from '../pages/Dashboard/Dashboard.jsx';
@@ -11,6 +11,7 @@ import ReturnView from '../pages/VATForm/ReturnView.jsx';
 import Attachments from '../pages/Attachments/Attachments.jsx';
 import HistoryView from '../pages/History/HistoryView.jsx';
 import SettingsView from '../pages/Settings/SettingsView.jsx';
+import AnnualStatement from '../pages/AnnualStatement/AnnualStatement.jsx';
 export default function App(){
   const [data,setData]=useState(null); const [page,setPage]=useState('dashboard'); const [periodId,setPeriodId]=useState(null); const [branchId,setBranchId]=useState(null); const [toast,setToast]=useState('');
   const refresh=async()=>{if(!api)return;const s=await api.getSnapshot();setData(s);if(!periodId&&s.periods[0])setPeriodId(s.periods[0].id);if(!branchId&&s.branches.find(b=>b.active))setBranchId(s.branches.find(b=>b.active).id)};
@@ -18,7 +19,7 @@ export default function App(){
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(t)}},[toast]);
   if(!data)return <div className="h-screen grid place-items-center text-slate-500">جاري فتح قاعدة البيانات...</div>;
   const activePeriod=data.periods.find(p=>p.id===periodId)||data.periods[0];
-  const nav=[['dashboard','الرئيسية',LayoutDashboard],['periods','الإقرارات الضريبية',ReceiptText],['branches','الفروع',Building2],['accounts','دليل الحسابات',ListTree],['reports','نموذج VAT',FileBarChart2],['attachments','المرفقات',Paperclip],['history','سجل التعديلات',History],['settings','الإعدادات والنسخ الاحتياطي',Settings]];
+  const nav=[['dashboard','الرئيسية',LayoutDashboard],['periods','الإقرارات الضريبية',ReceiptText],['branches','الفروع',Building2],['accounts','دليل الحسابات',ListTree],['reports','نموذج VAT',FileBarChart2],['annual','بيان الإقرار المجمع',TableProperties],['attachments','المرفقات',Paperclip],['history','سجل التعديلات',History],['settings','الإعدادات والنسخ الاحتياطي',Settings]];
   return <div className="h-screen flex flex-col bg-[#eef2f6]" dir="rtl">
     <TitleBar/>
     <div className="flex flex-1 min-h-0">
@@ -38,6 +39,7 @@ export default function App(){
         {page==='branches'&&<Branches data={data} setData={setData}/>} 
         {page==='accounts'&&<Accounts data={data} setData={setData}/>} 
         {page==='reports'&&<ReturnView data={data} period={activePeriod} setData={setData}/>} 
+        {page==='annual'&&<AnnualStatement data={data} setData={setData}/>} 
         {page==='attachments'&&<Attachments data={data} period={activePeriod} setData={setData}/>} 
         {page==='history'&&<HistoryView data={data} period={activePeriod}/>} 
         {page==='settings'&&<SettingsView data={data} setData={setData}/>} 

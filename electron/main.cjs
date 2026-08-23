@@ -122,6 +122,22 @@ ipcMain.handle('vat:updatePeriod', (_e, p) => {
   db.run('UPDATE periods SET status=?,is_locked=?,due_date=?,filed_date=?,reference_no=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',[status,isLocked,dueDate,filedDate,referenceNo,p.id]);
   logHistory(p.id,'period',p.id,p.isLocked===true?'lock':p.isLocked===false?'unlock':'update',{before,after:{...p,status,isLocked}}); persist(); return snapshot();
 });
+
+ipcMain.handle('vat:deletePeriod', (_e, { id }) => {
+  const period=one('SELECT * FROM periods WHERE id=?',[id]); if(!period)return snapshot();
+  const attachments=query('SELECT * FROM attachments WHERE period_id=?',[id]);
+  for(const a of attachments){try{if(a.stored_path&&fs.existsSync(a.stored_path))fs.unlinkSync(a.stored_path);}catch{}}
+  const entryIds=query('SELECT id FROM entries WHERE period_id=?',[id]).map(x=>x.id);
+  if(entryIds.length){const marks=entryIds.map(()=>'?').join(',');db.run(`DELETE FROM entry_parts WHERE entry_id IN (${marks})`,entryIds);}
+  db.run('DELETE FROM entries WHERE period_id=?',[id]);
+  db.run('DELETE FROM return_adjustments WHERE period_id=?',[id]);
+  db.run('DELETE FROM payments WHERE period_id=?',[id]);
+  db.run('DELETE FROM reminders WHERE period_id=?',[id]);
+  db.run('DELETE FROM attachments WHERE period_id=?',[id]);
+  db.run('DELETE FROM history WHERE period_id=?',[id]);
+  db.run('DELETE FROM periods WHERE id=?',[id]);
+  persist(); return snapshot();
+});
 ipcMain.handle('vat:saveEntry', (_e, p) => {
   if(Number(one('SELECT is_locked FROM periods WHERE id=?',[p.periodId])?.is_locked||0)===1) return snapshot();
   const parts = Array.isArray(p.parts) ? p.parts.map(Number).filter(Number.isFinite) : parseParts(p.expression || '');

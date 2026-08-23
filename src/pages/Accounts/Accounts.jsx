@@ -36,7 +36,7 @@ export default function Accounts({data,setData}){
   const drop=async(target)=>{if(!drag||drag.id===target.id)return;const arr=[...sectionAccounts];const from=arr.findIndex(x=>x.id===drag.id),to=arr.findIndex(x=>x.id===target.id);arr.splice(to,0,arr.splice(from,1)[0]);setData(await api.reorderAccounts(arr));setDrag(null)};
   return <div className="space-y-5">
     <div className="grid grid-cols-[1fr_410px] gap-5">
-      <div className="card p-4 flex items-center gap-3">
+      <div className="card p-4 flex items-center gap-3 flex-wrap">
         <select className="input !w-64" value={branchId} onChange={e=>setBranchId(Number(e.target.value))}>{data.branches.filter(b=>b.active).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select>
         <button className={`btn ${section==='purchase'?'btn-primary':'btn-soft'}`} onClick={()=>setSection('purchase')}>المشتريات / المصروفات</button>
         <button className={`btn ${section==='sales'?'btn-primary':'btn-soft'}`} onClick={()=>setSection('sales')}>الإيرادات / المبيعات</button>

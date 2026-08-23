@@ -1,10 +1,6 @@
 import {accountVisibleForBranch} from './visibility.js';
 export function aggregateBranchTotals(data,period){
   if(!period)return {sales15:0,sales0:0,purchase15:0,purchase0:0};
-  // Use the exact same branch-aware calculation used by the entry screen and
-  // the "إجمالي الفروع" preview. This is important after visibility categories
-  // became multi-select: raw entry summing can include stale/hidden account
-  // values and make the VAT form differ from the totals the user actually sees.
   return data.branches.filter(b=>b.active).map(b=>branchMetrics(data,period,b.id)).reduce((acc,m)=>({
     sales15:acc.sales15+m.sales15,
     sales0:acc.sales0+m.sales0,
@@ -28,7 +24,7 @@ export function calculateVatBoxes(data,period){
   const boxes=Object.fromEntries([1,2,3,4,5,7,8,9,10,11].map(n=>[n,{value:0,tax:0,mappedValue:0,mappedTax:0}]));
   if(!period)return boxes;
   const rate=Number(period.tax_rate||15)/100;
-  const taxableBoxes=new Set([1,2,7,8,9]);
+  const taxableBoxes=new Set([1,7,8,9]);
   for(const branch of data.branches.filter(b=>b.active)){
     const accounts=data.accounts.filter(a=>a.active&&accountVisibleForBranch(a,branch));
     for(const account of accounts){
@@ -37,14 +33,16 @@ export function calculateVatBoxes(data,period){
         const amount=Number(entry?.total||0); if(!amount)continue;
         const box=effectiveVatBox(data,branch.id,account,rateType); if(!box||!boxes[box])continue;
         boxes[box].mappedValue+=amount;
-        if(taxableBoxes.has(box)) boxes[box].mappedTax+=amount*rate;
+        // بند 2 (المبيعات التي تتحمل الدولة ضريبتها) يعرض قيمة فقط بلا ضريبة
+        // حتى لو كانت هناك تسوية ضريبية قديمة محفوظة من إصدار سابق.
+        if(rateType==='15' && taxableBoxes.has(box)) boxes[box].mappedTax+=amount*rate;
       }
     }
   }
   for(const n of Object.keys(boxes).map(Number)){
     const adj=data.adjustments.find(x=>x.period_id===period.id&&Number(x.box_no)===n)||{};
     boxes[n].value=boxes[n].mappedValue+Number(adj.value||0);
-    boxes[n].tax=boxes[n].mappedTax+Number(adj.tax_value||0);
+    boxes[n].tax=n===2?0:(boxes[n].mappedTax+Number(adj.tax_value||0));
   }
   return boxes;
 }
