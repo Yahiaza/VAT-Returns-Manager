@@ -9,10 +9,13 @@ on:
 jobs:
   release:
     runs-on: windows-latest
+
     permissions:
-      contents: read
+      contents: write
+
     env:
-      GH_TOKEN: ${{ secrets.UPDATE_REPO_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
