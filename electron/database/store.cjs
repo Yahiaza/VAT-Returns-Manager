@@ -54,6 +54,8 @@ function migrate(){
   if(!one("SELECT 1 FROM settings WHERE key='taxRate'"))rawRun("INSERT INTO settings(key,value) VALUES('taxRate','15')");
   if(!one("SELECT 1 FROM settings WHERE key='companyName'"))rawRun("INSERT INTO settings(key,value) VALUES('companyName','المنشأة')");
   if(!one("SELECT 1 FROM settings WHERE key='unifiedNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('unifiedNumber','')");
+  if(!one("SELECT 1 FROM settings WHERE key='distinctiveNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('distinctiveNumber','')");
+  if(!one("SELECT 1 FROM settings WHERE key='taxNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('taxNumber','')");
   if(!one('SELECT 1 FROM accounts LIMIT 1')){let order=0;for(const [section,name] of DEFAULT_ACCOUNTS)rawRun('INSERT INTO accounts(section,name,sort_order) VALUES(?,?,?)',[section,name,order++]);}
 }
 function logHistory(periodId,entity,entityId,action,details){rawRun('INSERT INTO history(period_id,entity,entity_id,action,details) VALUES(?,?,?,?,?)',[periodId||null,entity,entityId||null,action,JSON.stringify(details)]);}
