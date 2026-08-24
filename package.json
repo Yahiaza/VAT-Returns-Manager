@@ -1,6 +1,6 @@
 {
   "name": "vat-returns-manager",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
   "description": "Saudi VAT monthly returns manager - React + Tailwind + Electron with Setup auto-update and Portable build",
   "main": "electron/main.cjs",
@@ -12,7 +12,10 @@
     "test:db": "node tests/database.test.cjs",
     "build:setup": "npm run build:web && electron-builder --win nsis --publish never",
     "build:portable": "npm run build:web && electron-builder --win portable --publish never",
-    "release": "npm run build:web && electron-builder --win nsis portable --publish always"
+    "release": "npm run build:web && electron-builder --win nsis portable --publish always",
+    "build:local": "npm run build:web && electron-builder --win nsis portable --publish never -c.win.signAndEditExecutable=false",
+    "build:local:setup": "npm run build:web && electron-builder --win nsis --publish never -c.win.signAndEditExecutable=false",
+    "build:local:portable": "npm run build:web && electron-builder --win portable --publish never -c.win.signAndEditExecutable=false"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.2.6",

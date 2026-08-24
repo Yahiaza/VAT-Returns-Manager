@@ -17,6 +17,7 @@ export default function App(){
   const refresh=async()=>{if(!api)return;const s=await api.getSnapshot();setData(s);if(!periodId&&s.periods[0])setPeriodId(s.periods[0].id);if(!branchId&&s.branches.find(b=>b.active))setBranchId(s.branches.find(b=>b.active).id)};
   useEffect(()=>{refresh();api?.onReminder?.(r=>setToast(`تذكير: ${r.title}`))},[]);
   useEffect(()=>{if(toast){const t=setTimeout(()=>setToast(''),3200);return()=>clearTimeout(t)}},[toast]);
+  useEffect(()=>{document.documentElement.dataset.appFont=data?.settings?.fontFamily||'cairo'},[data?.settings?.fontFamily]);
   if(!data)return <div className="h-screen grid place-items-center text-slate-500">جاري فتح قاعدة البيانات...</div>;
   const activePeriod=data.periods.find(p=>p.id===periodId)||data.periods[0];
   const nav=[['dashboard','الرئيسية',LayoutDashboard],['periods','الإقرارات الضريبية',ReceiptText],['branches','الفروع',Building2],['accounts','دليل الحسابات',ListTree],['reports','نموذج VAT',FileBarChart2],['annual','بيان الإقرار المجمع',TableProperties],['attachments','المرفقات',Paperclip],['history','سجل التعديلات',History],['settings','الإعدادات والنسخ الاحتياطي',Settings]];
