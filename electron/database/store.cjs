@@ -38,7 +38,7 @@ function migrate(){
     CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, branch_id INTEGER NOT NULL, account_id INTEGER NOT NULL, rate_type TEXT NOT NULL CHECK(rate_type IN ('15','0')), total REAL NOT NULL DEFAULT 0, expression TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(period_id,branch_id,account_id,rate_type));
     CREATE TABLE IF NOT EXISTS entry_parts (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id INTEGER NOT NULL, amount REAL NOT NULL, position INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS return_adjustments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, box_no INTEGER NOT NULL, value REAL NOT NULL DEFAULT 0, tax_value REAL NOT NULL DEFAULT 0, note TEXT DEFAULT '', UNIQUE(period_id,box_no));
-    CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL UNIQUE, payment_date TEXT, amount REAL DEFAULT 0, reference_no TEXT DEFAULT '', note TEXT DEFAULT '');
+    CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL UNIQUE, payment_date TEXT, amount REAL DEFAULT 0, reference_no TEXT DEFAULT '', invoice_no TEXT DEFAULT '', note TEXT DEFAULT '');
     CREATE TABLE IF NOT EXISTS reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, remind_at TEXT NOT NULL, title TEXT NOT NULL, fired INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, name TEXT NOT NULL, stored_path TEXT NOT NULL, added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER, entity TEXT NOT NULL, entity_id INTEGER, action TEXT NOT NULL, details TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
@@ -49,6 +49,7 @@ function migrate(){
   const accountCols=query('PRAGMA table_info(accounts)').map(x=>x.name);if(!accountCols.includes('visibility_category_id'))rawRun('ALTER TABLE accounts ADD COLUMN visibility_category_id INTEGER');
   const codeCols=query('PRAGMA table_info(branch_account_codes)').map(x=>x.name);if(!codeCols.includes('vat_box_15'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_15 INTEGER');if(!codeCols.includes('vat_box_0'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_0 INTEGER');
   const periodCols=query('PRAGMA table_info(periods)').map(x=>x.name);if(!periodCols.includes('is_locked'))rawRun('ALTER TABLE periods ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0');
+  const paymentCols=query('PRAGMA table_info(payments)').map(x=>x.name);if(!paymentCols.includes('invoice_no'))rawRun("ALTER TABLE payments ADD COLUMN invoice_no TEXT DEFAULT ''");
   rawRun('CREATE TABLE IF NOT EXISTS account_visibility_categories (account_id INTEGER NOT NULL, category_id INTEGER NOT NULL, PRIMARY KEY(account_id,category_id))');
   for(const a of query('SELECT id,visibility_category_id FROM accounts WHERE visibility_category_id IS NOT NULL'))rawRun('INSERT OR IGNORE INTO account_visibility_categories(account_id,category_id) VALUES(?,?)',[a.id,a.visibility_category_id]);
   if(!one("SELECT 1 FROM settings WHERE key='taxRate'"))rawRun("INSERT INTO settings(key,value) VALUES('taxRate','15')");

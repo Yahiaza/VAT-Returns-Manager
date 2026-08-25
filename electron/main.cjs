@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Notification, Tray, Menu, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -141,8 +141,23 @@ ipcMain.handle('vat:updatePeriod', (_e, p) => {
   logHistory(p.id,'period',p.id,p.isLocked===true?'lock':p.isLocked===false?'unlock':'update',{before,after:{...p,status,isLocked}}); persist(); return snapshot();
 });
 
+function periodIsCompletelyEmpty(id){
+  const period=one('SELECT * FROM periods WHERE id=?',[id]);
+  if(!period)return true;
+  if(period.status==='paid'||Number(period.is_locked)===1)return false;
+  const hasEntry=!!one('SELECT 1 FROM entries WHERE period_id=? AND ABS(total)>0.000001 LIMIT 1',[id]);
+  const hasAdj=!!one('SELECT 1 FROM return_adjustments WHERE period_id=? AND (ABS(value)>0.000001 OR ABS(tax_value)>0.000001) LIMIT 1',[id]);
+  const pay=one('SELECT * FROM payments WHERE period_id=?',[id]);
+  const hasPayment=!!pay&&(Math.abs(Number(pay.amount||0))>0.000001||pay.payment_date||pay.reference_no||pay.invoice_no||pay.note);
+  const hasAttachment=!!one('SELECT 1 FROM attachments WHERE period_id=? LIMIT 1',[id]);
+  const hasReminder=!!one('SELECT 1 FROM reminders WHERE period_id=? LIMIT 1',[id]);
+  return !(hasEntry||hasAdj||hasPayment||hasAttachment||hasReminder);
+}
+
 ipcMain.handle('vat:deletePeriod', (_e, { id }) => {
   const period=one('SELECT * FROM periods WHERE id=?',[id]); if(!period)return snapshot();
+  if(period.status==='paid'||Number(period.is_locked)===1)throw new Error('لا يمكن حذف إقرار تم سداده.');
+  if(!periodIsCompletelyEmpty(id))throw new Error('الحذف متاح فقط للإقرار الفارغ تمامًا.');
   const attachments=query('SELECT * FROM attachments WHERE period_id=?',[id]);
   for(const a of attachments){try{if(a.stored_path&&fs.existsSync(a.stored_path))fs.unlinkSync(a.stored_path);}catch{}}
   const entryIds=query('SELECT id FROM entries WHERE period_id=?',[id]).map(x=>x.id);
@@ -167,7 +182,7 @@ ipcMain.handle('vat:saveEntry', (_e, p) => {
   logHistory(p.periodId,'entry',entry.id,'update',{before,after:{...entry,parts}}); persist(); return snapshot();
 });
 ipcMain.handle('vat:saveAdjustment', (_e,p) => { if(Number(one('SELECT is_locked FROM periods WHERE id=?',[p.periodId])?.is_locked||0)===1) return snapshot(); db.run('INSERT INTO return_adjustments(period_id,box_no,value,tax_value,note) VALUES(?,?,?,?,?) ON CONFLICT(period_id,box_no) DO UPDATE SET value=excluded.value,tax_value=excluded.tax_value,note=excluded.note',[p.periodId,p.boxNo,Number(p.value)||0,Number(p.taxValue)||0,p.note||'']); logHistory(p.periodId,'adjustment',p.boxNo,'update',p); persist(); return snapshot(); });
-ipcMain.handle('vat:savePayment', (_e,p) => { db.run('INSERT INTO payments(period_id,payment_date,amount,reference_no,note) VALUES(?,?,?,?,?) ON CONFLICT(period_id) DO UPDATE SET payment_date=excluded.payment_date,amount=excluded.amount,reference_no=excluded.reference_no,note=excluded.note',[p.periodId,p.paymentDate||null,Number(p.amount)||0,p.referenceNo||'',p.note||'']); logHistory(p.periodId,'payment',p.periodId,'update',p); persist(); return snapshot(); });
+ipcMain.handle('vat:savePayment', (_e,p) => { const amount=Number(String(p.amount??'').replace(/,/g,''))||0; db.run('INSERT INTO payments(period_id,payment_date,amount,reference_no,invoice_no,note) VALUES(?,?,?,?,?,?) ON CONFLICT(period_id) DO UPDATE SET payment_date=excluded.payment_date,amount=excluded.amount,reference_no=excluded.reference_no,invoice_no=excluded.invoice_no,note=excluded.note',[p.periodId,p.paymentDate||null,amount,p.referenceNo||'',p.invoiceNo||'',p.note||'']); logHistory(p.periodId,'payment',p.periodId,'update',{...p,amount}); persist(); return snapshot(); });
 ipcMain.handle('vat:saveReminder', (_e,p) => { db.run('INSERT INTO reminders(period_id,remind_at,title,fired) VALUES(?,?,?,0)',[p.periodId,p.remindAt,p.title||'تذكير سداد ضريبة القيمة المضافة']); persist(); return snapshot(); });
 ipcMain.handle('vat:selectAttachments', async (_e,{periodId}) => {
   const res = await dialog.showOpenDialog(win,{properties:['openFile','multiSelections'],title:'إرفاق مستندات الإقرار'}); if(res.canceled) return snapshot();
@@ -176,6 +191,8 @@ ipcMain.handle('vat:selectAttachments', async (_e,{periodId}) => {
   persist(); return snapshot();
 });
 ipcMain.handle('vat:removeAttachment', (_e,{id}) => { const a=one('SELECT * FROM attachments WHERE id=?',[id]); if(a){ try{if(fs.existsSync(a.stored_path))fs.unlinkSync(a.stored_path);}catch{} db.run('DELETE FROM attachments WHERE id=?',[id]); persist(); } return snapshot(); });
+ipcMain.handle('vat:openAttachment', async (_e,{id}) => { const a=one('SELECT * FROM attachments WHERE id=?',[id]); if(!a||!a.stored_path||!fs.existsSync(a.stored_path))return{ok:false,message:'المرفق غير موجود'}; const error=await shell.openPath(a.stored_path); return error?{ok:false,message:error}:{ok:true}; });
+ipcMain.handle('vat:printAttachment', async (_e,{id}) => { const a=one('SELECT * FROM attachments WHERE id=?',[id]); if(!a||!a.stored_path||!fs.existsSync(a.stored_path))return{ok:false,message:'المرفق غير موجود'}; const ext=path.extname(a.stored_path).toLowerCase(); const printable=['.pdf','.png','.jpg','.jpeg','.webp','.gif','.bmp','.html','.htm','.txt']; if(!printable.includes(ext)){await shell.openPath(a.stored_path);return{ok:false,message:'تم فتح الملف؛ استخدم أمر الطباعة من البرنامج المرتبط به.'};} const pw=new BrowserWindow({show:false,width:1000,height:800,webPreferences:{sandbox:true}}); try{await pw.loadFile(a.stored_path);await new Promise((resolve,reject)=>pw.webContents.print({silent:false,printBackground:true},ok=>ok?resolve():reject(new Error('تم إلغاء الطباعة'))));return{ok:true};}finally{if(!pw.isDestroyed())pw.destroy();} });
 ipcMain.handle('vat:backup', async () => {
   persist(); const res=await dialog.showSaveDialog(win,{title:'حفظ نسخة احتياطية',defaultPath:`VAT-Backup-${new Date().toISOString().slice(0,10)}.db`,filters:[{name:'VAT Backup',extensions:['db']}]}); if(res.canceled||!res.filePath)return{canceled:true}; fs.copyFileSync(dbPath,res.filePath); return{canceled:false,path:res.filePath};
 });

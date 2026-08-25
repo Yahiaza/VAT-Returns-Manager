@@ -46,3 +46,45 @@
 .live-net-tax b{font-size:1.35rem;color:#17653f}
 .live-net-tax.is-negative{background:#fff0f0;border-color:#efc2c2;color:#a42b2b}.live-net-tax.is-negative b{color:#c62828}
 @media(max-width:1250px){.live-overall-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* =========================================================
+   Warm Sand / Walnut / Crimson theme
+   Visual-only overrides — application logic remains unchanged
+   ========================================================= */
+:root{
+  --sand-0:#fffdf9;--sand-1:#faf5ec;--sand-2:#f3eadc;--sand-3:#e5d5c1;
+  --walnut-900:#38251f;--walnut-800:#4a3028;--walnut-700:#624238;--walnut-600:#795548;
+  --ink:#3b2b27;--muted:#806e67;--crimson:#9b3347;--crimson-dark:#7f2638;--crimson-soft:#f8e9ec;
+  --olive:#5f7654;--line:#ddcfc1;
+  color:var(--ink);background:var(--sand-1)
+}
+body{background:var(--sand-1);color:var(--ink)}
+main{background:linear-gradient(180deg,#fbf7f0 0,#f3eadf 100%)}
+::-webkit-scrollbar-thumb{background:#b9a292}
+.card,.account-group-card{background:#fffdf9;border-color:var(--line);box-shadow:0 4px 16px rgba(74,48,40,.065)}
+.input,.table-select,.visibility-trigger{background:#fffdfa;border-color:#d7c7b8;color:#49342d}
+.input:focus,.table-select:focus,.visibility-picker.is-open .visibility-trigger{border-color:var(--crimson);box-shadow:0 0 0 2px rgba(155,51,71,.12)}
+.input::placeholder{color:#aa9990}
+.btn-primary{background:var(--crimson);color:#fff}.btn-primary:hover{background:var(--crimson-dark)}
+.btn-soft{background:#eee3d7;color:#5d4037}.btn-soft:hover{background:#e5d5c6}
+.btn-save-strong{background:#66775a;box-shadow:0 4px 10px rgba(95,118,84,.18)}
+.btn-edit-strong{background:#8b5e4b;box-shadow:0 4px 10px rgba(139,94,75,.17)}
+.quick-link{background:#f7f0e7;border-color:#e5d8ca;color:#513a32}.quick-link:hover{background:#efe3d6}
+.table th{background:#eadfd3;color:#513a32}.table th,.table td{border-color:#dfd1c4}.table tbody tr:nth-child(even) td{background:#fdf9f4}.table tbody tr:hover td{background:#f8eee5}.table-total td{background:#e9ddd1!important;border-top-color:#c8b3a1!important}.table-grand-total td{background:#f3e8df!important;border-top-color:#cbb7a6!important}
+.category-chip{background:#efe5db;color:#64493e;border-color:#dfd0c3}.tiny-label{color:#826f66}
+.visibility-menu{background:#fffdfa;border-color:#d8c8ba;box-shadow:0 14px 34px rgba(68,43,35,.18)}.visibility-option{background:#fffdfa;color:#4f3931}.visibility-option:hover{background:#f5e9df}.check-box{border-color:#bca89a}.check-box.checked{background:var(--crimson);border-color:var(--crimson)}.visibility-menu-footer{background:#f7f0e8;border-color:#e2d4c7;color:#7b675f}.visibility-menu-footer button{background:var(--crimson)}
+.account-group-tone-0 .account-group-header{background:#f7eee5;color:#68483c;border-right-color:#9b6b58}.account-group-tone-1 .account-group-header{background:#f4eee1;color:#6c6040;border-right-color:#9a8a58}.account-group-tone-2 .account-group-header{background:#f8e9ec;color:#7d3544;border-right-color:#a84a5d}.account-group-tone-3 .account-group-header{background:#f6eadb;color:#7b552f;border-right-color:#b17b42}.account-group-tone-4 .account-group-header{background:#f3e5e1;color:#74483d;border-right-color:#9c6558}
+.report-scope{color:#6b5046;background:#f1e8df;border-color:#dfd0c4}.report-divider{background:#ddcec2}.mini-action{border-color:#d9c9bb;background:#fffdfa;color:#6b463a}.mini-action:hover{background:#f6ebe2;border-color:#cbb5a4}.report-action-group.branch-report-group{background:#f7eee6;border-color:#dfc7b8}.report-action-group.overall-report-group{background:#f7e8eb;border-color:#e1bdc5}.branch-report-group .report-group-title,.branch-report-group .mini-action{color:#70483b}.overall-report-group .report-group-title,.overall-report-group .mini-action{color:#8b3042}.branch-report-group .mini-action{border-color:#dcc5b6}.overall-report-group .mini-action{border-color:#dfbdc5;background:#fffafb}
+.branch-tax-title{background:#5b3b31}.tax-net-row td{background:#edf2e8!important;color:#536b49}
+.system-modal-backdrop{background:rgba(52,35,30,.48)}.system-modal{background:#fffdf9;border-color:#dfd0c4;box-shadow:0 24px 70px rgba(52,35,30,.28)}.system-modal-close{background:#f1e7de;color:#765f56}.system-modal-body p{color:#806d65}
+.edit-mode-bar{border-right-color:var(--crimson)!important;background:linear-gradient(90deg,#fffdf9,#fbf0f2)}.edit-mode-bar.is-saved{border-right-color:#66775a!important;background:linear-gradient(90deg,#fffdf9,#f3f6ef)}
+.live-overall-summary{border-color:#dfd0c4}.live-overall-head{border-color:#e4d7cb;background:linear-gradient(90deg,#fffdf9,#f7efe7)}.live-overall-title{color:#50372f}.live-overall-subtitle{color:#927f76}.live-badge{background:#f6e7ea;color:#8f3345;border-color:#e5c3ca}.live-summary-card{border-color:#e0d2c5;background:#fcf8f3}.live-summary-card.tone-blue{background:#f7eee7;border-color:#dfc9ba}.live-summary-card.tone-teal{background:#f2efe5;border-color:#d8d0b7}.live-summary-card.tone-navy{background:#f3e8e4;border-color:#dcc8c0}.live-summary-label{color:#745d54}.live-summary-value,.live-summary-card.tone-navy .live-summary-value{color:#573b31}.live-summary-card.tone-teal .live-summary-value{color:#65704d}.live-summary-tax{border-color:#ddcfc3;color:#89756c}.live-summary-tax b{color:#67483d}.live-net-tax{border-color:#cbd6c3;background:#edf3e9;color:#536b49}.live-net-tax b{color:#4d6744}
+/* Tailwind utility harmonization used throughout the existing JSX */
+.bg-white,.bg-white\/80{background-color:#fffdf9!important}.bg-slate-50{background-color:#faf5ef!important}.bg-slate-100{background-color:#f2e9df!important}.bg-blue-50{background-color:#f7eee7!important}.text-slate-800{color:#44302a!important}.text-slate-700{color:#594039!important}.text-slate-600{color:#705950!important}.text-slate-500{color:#806d65!important}.text-slate-400{color:#9b8980!important}.border-slate-200{border-color:#e3d6ca!important}.border-slate-300{border-color:#d6c5b7!important}
+.bg-teal-50{background-color:#f3eee2!important}.text-teal-700{color:#70623e!important}.text-emerald-600,.text-emerald-700{color:#5e7553!important}.bg-emerald-50{background-color:#eef3e9!important}.border-emerald-200,.border-emerald-300{border-color:#cbd7c4!important}
+.bg-amber-50{background-color:#fbf0df!important}.border-amber-200{border-color:#ead0aa!important}.text-amber-800{color:#82532f!important}
+/* Form section accents */
+.bg-\[\#fff7a8\]{background-color:#ead9bd!important;color:#553c33}.bg-\[\#dff4e7\]{background-color:#edf3e9!important;color:#4e6745}
+
+/* Date display + payment/period state refinements */
+.date-ddmmyyyy{direction:ltr!important;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em}.date-cell{direction:ltr;text-align:right;font-variant-numeric:tabular-nums}.paid-status-btn{background:#e6f4ec;color:#246343;border:1px solid #b8dec8;cursor:default;font-weight:900}.attachment-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fbf6ef;border:1px solid #e4d5c8;border-radius:9px;padding:11px 12px}.attachment-delete{color:#a92d3f;border-color:#eccbd2;background:#fff7f8}.annual-total-row td{background:#eadfd3!important;color:#513a32;font-weight:900;border-top:2px solid #bfa995!important}
