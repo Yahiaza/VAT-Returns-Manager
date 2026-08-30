@@ -1,4 +1,4 @@
-import React,{useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState} from 'react';
 import {Eye,FileDown,FileSpreadsheet,PencilLine,X} from 'lucide-react';
 import {api} from '../../services/api.js';
 import {annualRow,buildAnnualStatementReport,DEFAULT_ANNUAL_LABELS} from '../../services/reportService.js';
@@ -10,6 +10,7 @@ export default function AnnualStatement({data,setData}){
   const years=[...new Set(data.periods.map(p=>Number(p.year)))].sort((a,b)=>b-a);const [year,setYear]=useState(years[0]||new Date().getFullYear());
   const [scope,setScope]=useState('overall');
   const [labels,setLabels]=useState(()=>readLabels(data.settings.annualStatementLabels));const [editKey,setEditKey]=useState(null);const [editValue,setEditValue]=useState('');
+  useEffect(()=>{if(!editKey)return;const onKey=e=>{if(e.key==='Escape'){e.preventDefault();setEditKey(null)}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[editKey]);
   const periods=useMemo(()=>data.periods.filter(p=>Number(p.year)===Number(year)).sort((a,b)=>a.month-b.month),[data.periods,year]);
   const branchId=scope==='overall'?null:Number(scope);const branch=branchId?data.branches.find(b=>b.id===branchId):null;
   const rows=periods.map(p=>annualRow(data,p,branchId));const totals=rows.reduce((a,r)=>{for(const k of COLS.slice(1))a[k]=(a[k]||0)+Number(r[k]||0);return a},{});

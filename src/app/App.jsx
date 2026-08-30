@@ -31,7 +31,7 @@ export default function App(){
     </aside>
     <main className="flex-1 min-w-0">
       <header className="h-[72px] bg-white/80 backdrop-blur border-b border-slate-200 px-7 flex items-center justify-between sticky top-0 z-30">
-        <div><h1 className="font-bold text-lg text-slate-800">{nav.find(x=>x[0]===page)?.[1]}</h1><div className="text-xs text-slate-400">إدارة شهرية للفروع وتجهيز نموذج الإقرار</div></div>
+        <div><h1 className="font-bold text-lg text-slate-800">{page==='reports'&&activePeriod?`نموذج VAT — ${activePeriod.label}`:nav.find(x=>x[0]===page)?.[1]}</h1><div className="text-xs text-slate-400">{page==='reports'&&activePeriod?`إقرار ضريبة القيمة المضافة عن شهر ${activePeriod.label}`:'إدارة شهرية للفروع وتجهيز نموذج الإقرار'}</div></div>
         <div className="flex items-center gap-3">{activePeriod&&<select className="input !w-auto !py-2" value={activePeriod.id} onChange={e=>setPeriodId(Number(e.target.value))}>{data.periods.map(p=><option key={p.id} value={p.id}>{p.label}</option>)}</select>}<button className="btn btn-soft flex items-center gap-2" onClick={()=>setPage('periods')}><Plus size={17}/> إقرار جديد</button></div>
       </header>
       <section className="p-6">

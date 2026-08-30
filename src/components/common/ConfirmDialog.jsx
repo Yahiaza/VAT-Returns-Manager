@@ -1,6 +1,7 @@
-import React from 'react';
+import React,{useEffect} from 'react';
 import {AlertTriangle,X} from 'lucide-react';
 export default function ConfirmDialog({open,title,message,confirmText='تأكيد',cancelText='إلغاء',danger=false,onConfirm,onCancel}){
+  useEffect(()=>{if(!open)return;const onKey=e=>{if(e.key==='Escape'){e.preventDefault();onCancel?.()}};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[open,onCancel]);
   if(!open)return null;
   return <div className="system-modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&onCancel?.()}>
     <div className="system-modal" role="dialog" aria-modal="true">

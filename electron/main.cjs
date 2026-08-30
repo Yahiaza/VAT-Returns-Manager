@@ -203,6 +203,7 @@ ipcMain.handle('vat:restore', async () => {
 ipcMain.handle('vat:previewReport', async (_e,payload) => {
   const file=writeTempHtml(payload?.html||'', 'preview');
   const preview=new BrowserWindow({width:1180,height:820,minWidth:850,minHeight:620,title:payload?.title||'معاينة التقرير',autoHideMenuBar:true,backgroundColor:'#f4f7fa',icon:path.join(__dirname,'..','build','icon.ico')});
+  preview.webContents.on('before-input-event',(event,input)=>{if(input.type==='keyDown'&&input.key==='Escape'){event.preventDefault();if(!preview.isDestroyed())preview.close();}});
   await preview.loadFile(file);
   preview.on('closed',()=>safeUnlink(file));
   return {ok:true};
