@@ -20,7 +20,7 @@ async function openDatabase(folder){
   db=fs.existsSync(dbPath)?new SQL.Database(fs.readFileSync(dbPath)):new SQL.Database();
   migrate(); persist(); return snapshot();
 }
-function rawRun(sql,params=[]){if(!db)throw new Error('Database is not open');db.run(sql,params);}
+function rawRun(sql,params=[]){if(!db)throw new Error('Database is not open');if(params.length)db.run(sql,params);else db.run(sql);}
 function run(sql,params=[]){rawRun(sql,params);persist();}
 function query(sql,params=[]){if(!db)throw new Error('Database is not open');const stmt=db.prepare(sql);stmt.bind(params);const rows=[];while(stmt.step())rows.push(stmt.getAsObject());stmt.free();return rows;}
 function one(sql,params=[]){return query(sql,params)[0]||null;}
@@ -40,7 +40,7 @@ function migrate(){
     CREATE TABLE IF NOT EXISTS return_adjustments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, box_no INTEGER NOT NULL, value REAL NOT NULL DEFAULT 0, tax_value REAL NOT NULL DEFAULT 0, note TEXT DEFAULT '', UNIQUE(period_id,box_no));
     CREATE TABLE IF NOT EXISTS payments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL UNIQUE, payment_date TEXT, amount REAL DEFAULT 0, reference_no TEXT DEFAULT '', invoice_no TEXT DEFAULT '', note TEXT DEFAULT '');
     CREATE TABLE IF NOT EXISTS reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, remind_at TEXT NOT NULL, title TEXT NOT NULL, fired INTEGER NOT NULL DEFAULT 0);
-    CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, name TEXT NOT NULL, stored_path TEXT NOT NULL, added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS attachments (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, name TEXT NOT NULL, stored_path TEXT NOT NULL, is_payment_notice INTEGER NOT NULL DEFAULT 0, added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
     CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER, entity TEXT NOT NULL, entity_id INTEGER, action TEXT NOT NULL, details TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);`);
   const branchCols=query('PRAGMA table_info(branches)').map(x=>x.name);
   if(!branchCols.includes('category_id'))rawRun('ALTER TABLE branches ADD COLUMN category_id INTEGER');
@@ -50,6 +50,7 @@ function migrate(){
   const codeCols=query('PRAGMA table_info(branch_account_codes)').map(x=>x.name);if(!codeCols.includes('vat_box_15'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_15 INTEGER');if(!codeCols.includes('vat_box_0'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_0 INTEGER');
   const periodCols=query('PRAGMA table_info(periods)').map(x=>x.name);if(!periodCols.includes('is_locked'))rawRun('ALTER TABLE periods ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0');
   const paymentCols=query('PRAGMA table_info(payments)').map(x=>x.name);if(!paymentCols.includes('invoice_no'))rawRun("ALTER TABLE payments ADD COLUMN invoice_no TEXT DEFAULT ''");
+  const attachmentCols=query('PRAGMA table_info(attachments)').map(x=>x.name);if(!attachmentCols.includes('is_payment_notice'))rawRun('ALTER TABLE attachments ADD COLUMN is_payment_notice INTEGER NOT NULL DEFAULT 0');
   rawRun('CREATE TABLE IF NOT EXISTS account_visibility_categories (account_id INTEGER NOT NULL, category_id INTEGER NOT NULL, PRIMARY KEY(account_id,category_id))');
   for(const a of query('SELECT id,visibility_category_id FROM accounts WHERE visibility_category_id IS NOT NULL'))rawRun('INSERT OR IGNORE INTO account_visibility_categories(account_id,category_id) VALUES(?,?)',[a.id,a.visibility_category_id]);
   if(!one("SELECT 1 FROM settings WHERE key='taxRate'"))rawRun("INSERT INTO settings(key,value) VALUES('taxRate','15')");
@@ -77,4 +78,15 @@ function healthCheck(){
 }
 
 function getDbPath(){return dbPath;} function getDataFolder(){return dataFolder;}
-module.exports={openDatabase,rawRun,run,query,one,persist,lastId,migrate,logHistory,parseParts,replaceAccountVisibility,snapshot,healthCheck,getDbPath,getDataFolder,ensureDir};
+function setPaymentNoticeAttachment(periodId,attachmentId){
+  const pid=Number(periodId);
+  const id=attachmentId==null?null:Number(attachmentId);
+  if(!Number.isInteger(pid)||pid<=0)return snapshot();
+  if(attachmentId!=null&&(!Number.isInteger(id)||id<=0))return snapshot();
+  if(id&&!one('SELECT 1 FROM attachments WHERE id=? AND period_id=?',[id,pid]))return snapshot();
+  rawRun('BEGIN');
+  try{rawRun('UPDATE attachments SET is_payment_notice=0 WHERE period_id=?',[pid]);if(id)rawRun('UPDATE attachments SET is_payment_notice=1 WHERE id=? AND period_id=?',[id,pid]);rawRun('COMMIT');}
+  catch(err){rawRun('ROLLBACK');throw err;}
+  persist();return snapshot();
+}
+module.exports={openDatabase,rawRun,run,query,one,persist,lastId,migrate,logHistory,parseParts,replaceAccountVisibility,setPaymentNoticeAttachment,snapshot,healthCheck,getDbPath,getDataFolder,ensureDir};

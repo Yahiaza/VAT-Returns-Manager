@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('vatAPI', {
   saveReminder: (payload) => ipcRenderer.invoke('vat:saveReminder', payload),
   selectAttachments: (periodId) => ipcRenderer.invoke('vat:selectAttachments', { periodId }),
   removeAttachment: (id) => ipcRenderer.invoke('vat:removeAttachment', { id }),
+  setPaymentNoticeAttachment: (periodId, attachmentId) => ipcRenderer.invoke('vat:setPaymentNoticeAttachment', { periodId, attachmentId }),
   openAttachment: (id) => ipcRenderer.invoke('vat:openAttachment', { id }),
   printAttachment: (id) => ipcRenderer.invoke('vat:printAttachment', { id }),
   backup: () => ipcRenderer.invoke('vat:backup'),
