@@ -114,7 +114,7 @@ ipcMain.handle('vat:testDatabase', () => store.healthCheck());
 ipcMain.on('vat:windowMinimize',()=>win?.minimize());
 ipcMain.on('vat:windowToggleMaximize',()=>{if(!win)return;win.isMaximized()?win.unmaximize():win.maximize();});
 ipcMain.on('vat:windowClose',()=>win?.close());
-ipcMain.handle('vat:saveSetting', (_e, { key, value }) => { db.run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [key, String(value)]); persist(); return snapshot(); });
+ipcMain.handle('vat:saveSetting', (_e, { key, value }) => { if(key==='separateRateCodes')store.setSeparateRateCodesEnabled(String(value)==='1');else db.run('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [key, String(value)]); persist(); return snapshot(); });
 ipcMain.handle('vat:addBranch', (_e, b) => { const order = one('SELECT COALESCE(MAX(sort_order),-1)+1 n FROM branches')?.n || 0; db.run('INSERT INTO branches(name,sort_order,category_id,tax_number,address) VALUES(?,?,?,?,?)', [String(b.name||'').trim(), order, b.category_id||null, b.tax_number||'', b.address||'']); persist(); return snapshot(); });
 ipcMain.handle('vat:updateBranch', (_e, b) => { db.run('UPDATE branches SET name=?,active=?,category_id=?,tax_number=?,address=? WHERE id=?', [b.name, b.active ? 1 : 0, b.category_id || null, b.tax_number||'', b.address||'', b.id]); persist(); return snapshot(); });
 ipcMain.handle('vat:deleteBranch', (_e, { id }) => { db.run('UPDATE branches SET active=0 WHERE id=?', [id]); persist(); return snapshot(); });
@@ -124,7 +124,16 @@ ipcMain.handle('vat:addAccount', (_e, a) => { const order = one('SELECT COALESCE
 ipcMain.handle('vat:updateAccount', (_e, a) => { db.run('UPDATE accounts SET name=?,section=?,active=? WHERE id=?', [a.name,a.section,a.active ? 1 : 0,a.id]); if(Array.isArray(a.visibility_category_ids)) replaceAccountVisibility(a.id,a.visibility_category_ids); persist(); return snapshot(); });
 ipcMain.handle('vat:deleteAccount', (_e, { id }) => { db.run('UPDATE accounts SET active=0 WHERE id=?', [id]); persist(); return snapshot(); });
 ipcMain.handle('vat:reorderAccounts', (_e, { items }) => { db.run('BEGIN'); try { items.forEach((it,i)=>db.run('UPDATE accounts SET sort_order=? WHERE id=?',[i,it.id])); db.run('COMMIT'); } catch(err){db.run('ROLLBACK'); throw err;} persist(); return snapshot(); });
-ipcMain.handle('vat:saveBranchCode', (_e, p) => { const toBox=v=>v===''||v==null?null:Number(v); db.run('INSERT INTO branch_account_codes(branch_id,account_id,short_code,program_code,vat_box_15,vat_box_0) VALUES(?,?,?,?,?,?) ON CONFLICT(branch_id,account_id) DO UPDATE SET short_code=excluded.short_code, program_code=excluded.program_code, vat_box_15=excluded.vat_box_15, vat_box_0=excluded.vat_box_0', [p.branchId,p.accountId,p.shortCode||'',p.programCode||'',toBox(p.vatBox15),toBox(p.vatBox0)]); persist(); return snapshot(); });
+ipcMain.handle('vat:saveBranchCode', (_e, p) => {
+  const before=one('SELECT * FROM branch_account_codes WHERE branch_id=? AND account_id=?',[p.branchId,p.accountId])||{};
+  const pick=(key,column,fallback='')=>p[key]!==undefined?p[key]:(before[column]??fallback);
+  const short15=pick('shortCode15','short_code_15'); const program15=pick('programCode15','program_code_15');
+  const shortCode=p.shortCode!==undefined?p.shortCode:(p.shortCode15!==undefined?short15:(before.short_code||''));
+  const programCode=p.programCode!==undefined?p.programCode:(p.programCode15!==undefined?program15:(before.program_code||''));
+  const toBox=v=>v===''||v==null?null:Number(v);
+  db.run('INSERT INTO branch_account_codes(branch_id,account_id,short_code,program_code,short_code_15,program_code_15,short_code_0,program_code_0,vat_box_15,vat_box_0) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(branch_id,account_id) DO UPDATE SET short_code=excluded.short_code, program_code=excluded.program_code, short_code_15=excluded.short_code_15, program_code_15=excluded.program_code_15, short_code_0=excluded.short_code_0, program_code_0=excluded.program_code_0, vat_box_15=excluded.vat_box_15, vat_box_0=excluded.vat_box_0', [p.branchId,p.accountId,shortCode,programCode,short15,program15,pick('shortCode0','short_code_0'),pick('programCode0','program_code_0'),toBox(p.vatBox15!==undefined?p.vatBox15:before.vat_box_15),toBox(p.vatBox0!==undefined?p.vatBox0:before.vat_box_0)]);
+  persist(); return snapshot();
+});
 ipcMain.handle('vat:createPeriod', (_e, p) => {
   const exists = one('SELECT id FROM periods WHERE year=? AND month=?',[p.year,p.month]); if (exists) return { ...snapshot(), existingId: exists.id };
   const taxRate = Number(one("SELECT value FROM settings WHERE key='taxRate'")?.value || 15);

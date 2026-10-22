@@ -15,3 +15,8 @@ export const formatEditableAmount = value => {
 };
 export const formatEditableExpression = raw => normalizeDigits(raw).replace(/[^0-9.,+\-]/g,'').split('+').map(part=>formatEditableAmount(part)).join(' + ');
 export const expressionForDisplay = raw => normalizeDigits(raw).split('+').map(x=>x.trim()).filter(Boolean).map(x=>{const n=Number(x.replace(/,/g,''));return Number.isFinite(n)?fmt(n):x}).join(' + ');
+export const nextMoneyCellTarget = (rowIndex,rateType,rowCount) => {
+  if(rateType==='15')return {rowIndex,rateType:'0'};
+  if(rateType==='0'&&rowIndex+1<rowCount)return {rowIndex:rowIndex+1,rateType:'15'};
+  return null;
+};

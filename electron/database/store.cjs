@@ -33,7 +33,7 @@ function migrate(){
     CREATE TABLE IF NOT EXISTS branches (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0, category_id INTEGER, tax_number TEXT DEFAULT '', address TEXT DEFAULT '');
     CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, section TEXT NOT NULL CHECK(section IN ('purchase','sales')), name TEXT NOT NULL, sort_order INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, visibility_category_id INTEGER);
     CREATE TABLE IF NOT EXISTS account_visibility_categories (account_id INTEGER NOT NULL, category_id INTEGER NOT NULL, PRIMARY KEY(account_id,category_id));
-    CREATE TABLE IF NOT EXISTS branch_account_codes (branch_id INTEGER NOT NULL, account_id INTEGER NOT NULL, short_code TEXT DEFAULT '', program_code TEXT DEFAULT '', vat_box_15 INTEGER, vat_box_0 INTEGER, PRIMARY KEY(branch_id,account_id));
+    CREATE TABLE IF NOT EXISTS branch_account_codes (branch_id INTEGER NOT NULL, account_id INTEGER NOT NULL, short_code TEXT DEFAULT '', program_code TEXT DEFAULT '', short_code_15 TEXT DEFAULT '', program_code_15 TEXT DEFAULT '', short_code_0 TEXT DEFAULT '', program_code_0 TEXT DEFAULT '', vat_box_15 INTEGER, vat_box_0 INTEGER, PRIMARY KEY(branch_id,account_id));
     CREATE TABLE IF NOT EXISTS periods (id INTEGER PRIMARY KEY AUTOINCREMENT, year INTEGER NOT NULL, month INTEGER NOT NULL, label TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft', is_locked INTEGER NOT NULL DEFAULT 0, tax_rate REAL NOT NULL DEFAULT 15, due_date TEXT, filed_date TEXT, reference_no TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(year,month));
     CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, period_id INTEGER NOT NULL, branch_id INTEGER NOT NULL, account_id INTEGER NOT NULL, rate_type TEXT NOT NULL CHECK(rate_type IN ('15','0')), total REAL NOT NULL DEFAULT 0, expression TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(period_id,branch_id,account_id,rate_type));
     CREATE TABLE IF NOT EXISTS entry_parts (id INTEGER PRIMARY KEY AUTOINCREMENT, entry_id INTEGER NOT NULL, amount REAL NOT NULL, position INTEGER NOT NULL DEFAULT 0);
@@ -47,7 +47,11 @@ function migrate(){
   if(!branchCols.includes('tax_number'))rawRun("ALTER TABLE branches ADD COLUMN tax_number TEXT DEFAULT ''");
   if(!branchCols.includes('address'))rawRun("ALTER TABLE branches ADD COLUMN address TEXT DEFAULT ''");
   const accountCols=query('PRAGMA table_info(accounts)').map(x=>x.name);if(!accountCols.includes('visibility_category_id'))rawRun('ALTER TABLE accounts ADD COLUMN visibility_category_id INTEGER');
-  const codeCols=query('PRAGMA table_info(branch_account_codes)').map(x=>x.name);if(!codeCols.includes('vat_box_15'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_15 INTEGER');if(!codeCols.includes('vat_box_0'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_0 INTEGER');
+  const codeCols=query('PRAGMA table_info(branch_account_codes)').map(x=>x.name);
+  const rateCodeColumns=['short_code_15','program_code_15','short_code_0','program_code_0'];
+  if(!codeCols.includes('vat_box_15'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_15 INTEGER');
+  if(!codeCols.includes('vat_box_0'))rawRun('ALTER TABLE branch_account_codes ADD COLUMN vat_box_0 INTEGER');
+  for(const name of rateCodeColumns)if(!codeCols.includes(name))rawRun(`ALTER TABLE branch_account_codes ADD COLUMN ${name} TEXT DEFAULT ''`);
   const periodCols=query('PRAGMA table_info(periods)').map(x=>x.name);if(!periodCols.includes('is_locked'))rawRun('ALTER TABLE periods ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0');
   const paymentCols=query('PRAGMA table_info(payments)').map(x=>x.name);if(!paymentCols.includes('invoice_no'))rawRun("ALTER TABLE payments ADD COLUMN invoice_no TEXT DEFAULT ''");
   const attachmentCols=query('PRAGMA table_info(attachments)').map(x=>x.name);if(!attachmentCols.includes('is_payment_notice'))rawRun('ALTER TABLE attachments ADD COLUMN is_payment_notice INTEGER NOT NULL DEFAULT 0');
@@ -58,11 +62,26 @@ function migrate(){
   if(!one("SELECT 1 FROM settings WHERE key='unifiedNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('unifiedNumber','')");
   if(!one("SELECT 1 FROM settings WHERE key='distinctiveNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('distinctiveNumber','')");
   if(!one("SELECT 1 FROM settings WHERE key='taxNumber'"))rawRun("INSERT INTO settings(key,value) VALUES('taxNumber','')");
+  if(!one("SELECT 1 FROM settings WHERE key='separateRateCodes'"))rawRun("INSERT INTO settings(key,value) VALUES('separateRateCodes','0')");
+  if(!one("SELECT 1 FROM settings WHERE key='separateRateCodesInitialized'"))rawRun("INSERT INTO settings(key,value) VALUES('separateRateCodesInitialized','0')");
   if(!one('SELECT 1 FROM accounts LIMIT 1')){let order=0;for(const [section,name] of DEFAULT_ACCOUNTS)rawRun('INSERT INTO accounts(section,name,sort_order) VALUES(?,?,?)',[section,name,order++]);}
 }
 function logHistory(periodId,entity,entityId,action,details){rawRun('INSERT INTO history(period_id,entity,entity_id,action,details) VALUES(?,?,?,?,?)',[periodId||null,entity,entityId||null,action,JSON.stringify(details)]);}
 function parseParts(expression){if(typeof expression!=='string')return[];return expression.split('+').map(s=>s.trim().replace(/,/g,'')).filter(Boolean).map(Number).filter(Number.isFinite);}
 function replaceAccountVisibility(accountId,categoryIds){const ids=[...new Set((Array.isArray(categoryIds)?categoryIds:[]).map(Number).filter(Number.isFinite))];rawRun('DELETE FROM account_visibility_categories WHERE account_id=?',[accountId]);ids.forEach(id=>rawRun('INSERT OR IGNORE INTO account_visibility_categories(account_id,category_id) VALUES(?,?)',[accountId,id]));rawRun('UPDATE accounts SET visibility_category_id=? WHERE id=?',[ids[0]||null,accountId]);}
+function setSeparateRateCodesEnabled(enabled){
+  const value=enabled?'1':'0';
+  rawRun('BEGIN');
+  try{
+    const initialized=one("SELECT value FROM settings WHERE key='separateRateCodesInitialized'")?.value==='1';
+    if(enabled&&!initialized){
+      rawRun("UPDATE branch_account_codes SET short_code_15=COALESCE(NULLIF(short_code_15,''),short_code,''), program_code_15=COALESCE(NULLIF(program_code_15,''),program_code,''), short_code_0=COALESCE(short_code_0,''), program_code_0=COALESCE(program_code_0,'')");
+      rawRun("INSERT INTO settings(key,value) VALUES('separateRateCodesInitialized','1') ON CONFLICT(key) DO UPDATE SET value='1'");
+    }
+    rawRun("INSERT INTO settings(key,value) VALUES('separateRateCodes',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",[value]);
+    rawRun('COMMIT');
+  }catch(err){rawRun('ROLLBACK');throw err;}
+}
 function snapshot(){const settingsRows=query('SELECT * FROM settings');const settings=Object.fromEntries(settingsRows.map(x=>[x.key,x.value]));const visibilityRows=query('SELECT account_id,category_id FROM account_visibility_categories ORDER BY account_id,category_id');const visibilityMap=visibilityRows.reduce((m,r)=>{(m[r.account_id]||=[]).push(Number(r.category_id));return m;},{});const accounts=query('SELECT * FROM accounts ORDER BY section,sort_order,id').map(a=>({...a,visibility_category_ids:visibilityMap[a.id]||[]}));return{dataFolder,settings,categories:query('SELECT * FROM categories ORDER BY sort_order,id'),branches:query('SELECT * FROM branches ORDER BY sort_order,id'),accounts,codes:query('SELECT * FROM branch_account_codes'),periods:query('SELECT * FROM periods ORDER BY year DESC,month DESC'),entries:query('SELECT * FROM entries'),entryParts:query('SELECT * FROM entry_parts ORDER BY entry_id,position'),adjustments:query('SELECT * FROM return_adjustments'),payments:query('SELECT * FROM payments'),reminders:query('SELECT * FROM reminders ORDER BY remind_at'),attachments:query('SELECT * FROM attachments ORDER BY added_at DESC'),history:query('SELECT * FROM history ORDER BY id DESC LIMIT 500')};}
 
 function healthCheck(){
@@ -89,4 +108,4 @@ function setPaymentNoticeAttachment(periodId,attachmentId){
   catch(err){rawRun('ROLLBACK');throw err;}
   persist();return snapshot();
 }
-module.exports={openDatabase,rawRun,run,query,one,persist,lastId,migrate,logHistory,parseParts,replaceAccountVisibility,setPaymentNoticeAttachment,snapshot,healthCheck,getDbPath,getDataFolder,ensureDir};
+module.exports={openDatabase,rawRun,run,query,one,persist,lastId,migrate,logHistory,parseParts,replaceAccountVisibility,setSeparateRateCodesEnabled,setPaymentNoticeAttachment,snapshot,healthCheck,getDbPath,getDataFolder,ensureDir};

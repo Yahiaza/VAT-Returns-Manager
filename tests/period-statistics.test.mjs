@@ -8,18 +8,21 @@ globalThis.window={vatAPI:{openAttachment:id=>{openedAttachmentId=id;return Prom
 
 const vite=await createServer({server:{middlewareMode:true},appType:'custom'});
 try{
-  const {buildPeriodsStatisticsReport}=await vite.ssrLoadModule('/src/services/reportService.js');
+  const {buildPeriodsStatisticsReport,buildBranchReport,buildAccountsDirectoryReport}=await vite.ssrLoadModule('/src/services/reportService.js');
   const {default:Dashboard}=await vite.ssrLoadModule('/src/pages/Dashboard/Dashboard.jsx');
   const {default:Attachments}=await vite.ssrLoadModule('/src/pages/Attachments/Attachments.jsx');
+  const {default:EntryPage,accountSearchText}=await vite.ssrLoadModule('/src/pages/Entry/EntryPage.jsx');
+  const {default:SettingsView}=await vite.ssrLoadModule('/src/pages/Settings/SettingsView.jsx');
+  const {nextMoneyCellTarget}=await vite.ssrLoadModule('/src/utils/money.js');
   const periods=[
     {id:1,year:2026,month:1,label:'يناير 2026',status:'paid',is_locked:1,tax_rate:15},
     {id:2,year:2025,month:12,label:'ديسمبر 2025',status:'paid',is_locked:1,tax_rate:15}
   ];
   const data={
-    settings:{companyName:'شركة الاختبار'},periods,
+    settings:{companyName:'شركة الاختبار',separateRateCodes:'1'},periods,
     branches:[{id:1,name:'الفرع',active:1}],
-    accounts:[{id:1,name:'مبيعات',active:1,section:'sales',visibility_category_ids:[]}],
-    codes:[],adjustments:[],payments:[],reminders:[],entryParts:[],categories:[],
+    accounts:[{id:1,name:'مشتريات اختبارية',active:1,section:'purchase',visibility_category_ids:[]}],
+    codes:[{branch_id:1,account_id:1,short_code:'OLD',program_code:'OLD-P',short_code_15:'S15',program_code_15:'P15',short_code_0:'S0',program_code_0:'P0'}],adjustments:[],payments:[],reminders:[],entryParts:[],categories:[],
     entries:[
       {period_id:1,branch_id:1,account_id:1,rate_type:'15',total:100},
       {period_id:2,branch_id:1,account_id:1,rate_type:'15',total:200}
@@ -51,6 +54,33 @@ try{
   const attachmentsHtml=renderToStaticMarkup(React.createElement(Attachments,{data,period:periods[0],setData:()=>{}}));
   assert.match(attachmentsHtml,/payment-notice-selected/,'the selected payment notice must be visibly marked in attachments');
   assert.match(attachmentsHtml,/إشعار السداد/,'attachments must expose the payment notice selector');
+
+  assert.deepEqual(nextMoneyCellTarget?.(0,'15',2),{rowIndex:0,rateType:'0'},'15% must advance to 0% on the same row');
+  assert.deepEqual(nextMoneyCellTarget?.(0,'0',2),{rowIndex:1,rateType:'15'},'0% must advance to 15% on the next row');
+  assert.equal(nextMoneyCellTarget?.(1,'0',2),null,'the final 0% cell has no forward target');
+  assert.match(accountSearchText?.(data.accounts[0],data.codes[0],true)||'',/s0/,'entry search must index the displayed rate-specific codes');
+
+  const entryHtml=renderToStaticMarkup(React.createElement(EntryPage,{data,period:periods[0],branchId:1,setBranchId:()=>{},setData:()=>{}}));
+  assert.match(entryHtml,/بيانات 15%/,'enabled layout must render a framed 15% group');
+  assert.match(entryHtml,/بيانات 0%/,'enabled layout must render a framed 0% group');
+  assert.match(entryHtml,/S15/,'the entry table must display the 15% short code');
+  assert.match(entryHtml,/S0/,'the entry table must display the 0% short code');
+
+  const settingsHtml=renderToStaticMarkup(React.createElement(SettingsView,{data,setData:()=>{}}));
+  assert.match(settingsHtml,/تفعيل أكواد مستقلة/,'settings must expose the opt-in layout toggle');
+
+  const branchReport=buildBranchReport(data,periods[0],data.branches[0]);
+  assert.match(branchReport,/S15/,'enabled reports must use the 15% code');
+  assert.match(branchReport,/S0/,'enabled reports must use the 0% code');
+  assert.doesNotMatch(branchReport,/>OLD</,'enabled reports must not show the legacy shared code');
+  const accountsReport=buildAccountsDirectoryReport(data,1,'purchase');
+  assert.match(accountsReport,/S15/,'enabled account-directory reports must use the 15% code');
+  assert.match(accountsReport,/S0/,'enabled account-directory reports must use the 0% code');
+  assert.doesNotMatch(accountsReport,/>OLD</,'enabled account-directory reports must not show the legacy shared code');
+  const legacyData={...data,settings:{...data.settings,separateRateCodes:'0'}};
+  const legacyAccountsReport=buildAccountsDirectoryReport(legacyData,1,'purchase');
+  assert.match(legacyAccountsReport,/>OLD</,'disabled account-directory reports must keep the shared code layout');
+  assert.doesNotMatch(legacyAccountsReport,/>S15</,'disabled account-directory reports must hide rate-specific codes');
   console.log('✓ Period statistics year scope and payment notice action passed');
 } finally {
   await vite.close();
