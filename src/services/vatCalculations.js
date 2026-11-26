@@ -20,12 +20,17 @@ export function effectiveVatBox(data,branchId,account,rateType){
   if(raw!==null && raw!==undefined && raw!=='')return Number(raw);
   return defaultVatBox(account,rateType);
 }
-export function calculateVatBoxes(data,period){
+export function vatReturnAdjustment(data, period, boxNo, branchId = null) {
+  if (branchId !== null) return {};
+  return data.adjustments.find(item => item.period_id === period.id && Number(item.box_no) === boxNo) || {};
+}
+
+export function calculateVatBoxes(data,period,branchId=null){
   const boxes=Object.fromEntries([1,2,3,4,5,7,8,9,10,11].map(n=>[n,{value:0,tax:0,mappedValue:0,mappedTax:0}]));
   if(!period)return boxes;
   const rate=Number(period.tax_rate||15)/100;
   const taxableBoxes=new Set([1,7,8,9]);
-  for(const branch of data.branches.filter(b=>b.active)){
+  for(const branch of data.branches.filter(b=>b.active&&(branchId===null||b.id===branchId))){
     const accounts=data.accounts.filter(a=>a.active&&accountVisibleForBranch(a,branch));
     for(const account of accounts){
       for(const rateType of ['15','0']){
@@ -40,7 +45,7 @@ export function calculateVatBoxes(data,period){
     }
   }
   for(const n of Object.keys(boxes).map(Number)){
-    const adj=data.adjustments.find(x=>x.period_id===period.id&&Number(x.box_no)===n)||{};
+    const adj=vatReturnAdjustment(data,period,n,branchId);
     boxes[n].value=boxes[n].mappedValue+Number(adj.value||0);
     boxes[n].tax=n===2?0:(boxes[n].mappedTax+Number(adj.tax_value||0));
   }

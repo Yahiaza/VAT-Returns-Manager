@@ -8,7 +8,10 @@ globalThis.window={vatAPI:{openAttachment:id=>{openedAttachmentId=id;return Prom
 
 const vite=await createServer({server:{middlewareMode:true},appType:'custom'});
 try{
-  const {buildPeriodsStatisticsReport,buildBranchReport,buildAccountsDirectoryReport}=await vite.ssrLoadModule('/src/services/reportService.js');
+  const {buildPeriodsStatisticsReport,buildBranchReport,buildAccountsDirectoryReport,buildAnnualStatementReport,buildVatReturnReport}=await vite.ssrLoadModule('/src/services/reportService.js');
+  const {default:Accounts}=await vite.ssrLoadModule('/src/pages/Accounts/Accounts.jsx');
+  const {default:AnnualStatement}=await vite.ssrLoadModule('/src/pages/AnnualStatement/AnnualStatement.jsx');
+  const {default:ReturnView}=await vite.ssrLoadModule('/src/pages/VATForm/ReturnView.jsx');
   const {default:Dashboard}=await vite.ssrLoadModule('/src/pages/Dashboard/Dashboard.jsx');
   const {default:Attachments}=await vite.ssrLoadModule('/src/pages/Attachments/Attachments.jsx');
   const {default:EntryPage,accountSearchText}=await vite.ssrLoadModule('/src/pages/Entry/EntryPage.jsx');
@@ -81,6 +84,50 @@ try{
   const legacyAccountsReport=buildAccountsDirectoryReport(legacyData,1,'purchase');
   assert.match(legacyAccountsReport,/>OLD</,'disabled account-directory reports must keep the shared code layout');
   assert.doesNotMatch(legacyAccountsReport,/>S15</,'disabled account-directory reports must hide rate-specific codes');
+
+  const rangedData={...data,periods:[...periods,
+    {id:3,year:2026,month:3,tax_rate:15},
+    {id:4,year:2026,month:4,tax_rate:15}
+  ],entries:[...data.entries,
+    {period_id:3,branch_id:1,account_id:1,rate_type:'15',total:300},
+    {period_id:4,branch_id:1,account_id:1,rate_type:'15',total:900}
+  ]};
+  const annual=buildAnnualStatementReport(rangedData,2026,undefined,null,1,3);
+  assert.match(annual,/يناير - 2026/);
+  assert.match(annual,/مارس - 2026/);
+  assert.doesNotMatch(annual,/أبريل - 2026|ديسمبر - 2025/,'months outside the range must be excluded from the exported report');
+  assert.match(annual,/>400\.00</,'monthly report totals must use only the selected months');
+  assert.match(renderToStaticMarkup(React.createElement(AnnualStatement,{data:rangedData})),/من شهر.*إلى شهر/);
+
+  const vatData={...data,
+    settings:{...data.settings,taxNumber:'TAX-COMPANY'},
+    branches:[{...data.branches[0],tax_number:'TAX-BRANCH-1'},{id:2,name:'الفرع الآخر',active:1,tax_number:'TAX-BRANCH-2'}],
+    entries:[...data.entries,{period_id:1,branch_id:2,account_id:1,rate_type:'15',total:800}],
+    adjustments:[{period_id:1,box_no:7,value:50,tax_value:7.5},{period_id:1,box_no:14,value:10,tax_value:5}]
+  };
+  const branchVat=buildVatReturnReport(vatData,periods[0],1);
+  assert.match(branchVat,/TAX-BRANCH-1/);
+  assert.match(branchVat,/>100\.00</);
+  assert.match(branchVat,/>-15\.00 ر\.س</,'branch net must exclude organization-level corrections');
+  assert.doesNotMatch(branchVat,/TAX-COMPANY|TAX-BRANCH-2|>950\.00</);
+  const overallVat=buildVatReturnReport(vatData,periods[0]);
+  assert.match(overallVat,/TAX-COMPANY/);
+  assert.match(overallVat,/>950\.00</,'overall VAT must retain all branches and adjustments');
+  assert.match(renderToStaticMarkup(React.createElement(ReturnView,{data:vatData,period:periods[0]})),/<option value="2">الفرع الآخر<\/option>/);
+
+  assert.match(entryHtml,/مسلسل - 15%/);
+  assert.match(accountsReport,/مسلسل - 0%/);
+  const renamed={...data,settings:{...data.settings,accountCodeLabels:JSON.stringify({short15:'مرجع داخلي',program0:'كود التصدير'})}};
+  for(const html of [
+    renderToStaticMarkup(React.createElement(Accounts,{data:renamed})),
+    renderToStaticMarkup(React.createElement(EntryPage,{data:renamed,period:periods[0],branchId:1})),
+    buildAccountsDirectoryReport(renamed,1,'purchase'),
+    buildBranchReport(renamed,periods[0],data.branches[0])
+  ]){
+    assert.match(html,/مرجع داخلي/);
+    assert.match(html,/كود التصدير/);
+    assert.match(html,/مسلسل - 0%/,'editing one label must preserve the other defaults');
+  }
   console.log('✓ Period statistics year scope and payment notice action passed');
 } finally {
   await vite.close();
